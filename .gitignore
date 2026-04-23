@@ -1,0 +1,6 @@
+.DS_Store/
+.idea/
+main.py
+*.log
+__pycache__
+project.log

@@ -1,0 +1,15 @@
+[project]
+name = "rv-article-publisher"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "aiokafka>=0.13.0",
+    "bs4>=0.0.2",
+    "httpx>=0.28.1",
+    "lxml>=6.1.0",
+    "openai>=2.32.0",
+    "pydantic>=2.13.2",
+    "rich>=15.0.0",
+    "tenacity>=9.1.4",
+    "yandex-ai-studio-sdk>=0.20.1",
+]
