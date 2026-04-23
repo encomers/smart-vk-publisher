@@ -1,3 +1,4 @@
 from .generator import ImageOverlayGenerator
+from .interface import IImageGenerator
 
-__all__ = ["ImageOverlayGenerator"]
+__all__ = ["ImageOverlayGenerator", "IImageGenerator"]
