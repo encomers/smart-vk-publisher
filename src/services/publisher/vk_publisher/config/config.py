@@ -1,5 +1,5 @@
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Final
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -10,18 +10,6 @@ _MIN_VALUE: Final = Decimal(_MIN_VALUE_STR)
 
 
 class VKConfig(BaseModel):
-    """Конфигурация для работы с VK API
-
-    Raises:
-        ValueError: в том случае, если api_version не является строкой, содержащей float
-        ValueError: в том случае, если api_version меньше 5.199
-        ValueError: в том случае, если api_version содержит более 3 знаков после точки
-        ValueError: в том случае, если api_version не содержит float с целой и дробной частью
-
-    Returns:
-        _type_: VKConfig
-    """
-
     model_config = ConfigDict(frozen=True)
 
     access_token: str = Field(..., description="Токен доступа к VK API", min_length=10)
@@ -37,7 +25,10 @@ class VKConfig(BaseModel):
 
     api_version: str = Field(
         default=_MIN_VALUE_STR,
-        description="Версия API VK. Минимум: " + _MIN_VALUE_STR,
+        description=(
+            "Версия API VK. Минимум: " + _MIN_VALUE_STR + ". "
+            "Допускается передача int (например, 6 → '6.0')."
+        ),
         min_length=1,
     )
 
@@ -48,7 +39,16 @@ class VKConfig(BaseModel):
         if isinstance(v, bool):
             raise ValueError("api_version не может быть bool")
 
-        if isinstance(v, Decimal):
+        if isinstance(v, float):
+            raise ValueError(
+                "api_version не может быть float. Используйте str или Decimal"
+            )
+
+        if isinstance(v, int):
+            if v < 0:
+                raise ValueError("api_version не может быть отрицательным")
+            v = f"{v}.0"
+        elif isinstance(v, Decimal):
             v = str(v)
 
         if not isinstance(v, str):
@@ -64,14 +64,7 @@ class VKConfig(BaseModel):
                 f"api_version должен быть в формате 'X.Y' с 1–3 знаками после точки. Например: {_MIN_VALUE_STR}"
             )
 
-        try:
-            value = Decimal(v)
-        except InvalidOperation:
-            raise ValueError(
-                f"api_version должен быть строкой формата 'X.Y', например: {_MIN_VALUE_STR}"
-            )
-
-        if value < _MIN_VALUE:
+        if Decimal(v) < _MIN_VALUE:
             raise ValueError(f"api_version должен быть не меньше {_MIN_VALUE_STR}")
 
         return v
@@ -91,7 +84,7 @@ class VKConfig(BaseModel):
 
         v = v.strip()
 
-        if not v.isdigit():
+        if not v.isascii() or not v.isdigit():
             raise ValueError("publishing_id должен быть строкой, содержащей число")
 
         if v == "0":
