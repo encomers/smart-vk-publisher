@@ -12,6 +12,8 @@ from PIL import (
     ImageStat,
 )
 
+from src.utils import to_base64_image
+
 from .interface import IImageGenerator
 
 
@@ -182,3 +184,10 @@ class ImageOverlayGenerator(IImageGenerator):
         )
 
         return canvas
+
+    async def generate_from_url(self, image_url: str, text: str) -> Image.Image:
+        try:
+            img: str = await to_base64_image(image_url)
+        except Exception as e:
+            raise ValueError(f"Error occurred while fetching image from URL: {e}")
+        return self.generate(img, text)
