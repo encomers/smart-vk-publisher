@@ -16,22 +16,41 @@ class EventBus(IEventBus):
         self._stopping = False
 
     # -------------------------
-    # SUBSCRIBE
+    # SUBSCRIBE / UNSUBSCRIBE
     # -------------------------
+
     def subscribe(self, event_type: Type[Any], handler: EventHandler[Any]) -> None:
         if self._stopping:
             raise RuntimeError("EventBus is shutting down")
         self._handlers[event_type].append(handler)
 
+    def unsubscribe(self, event_type: Type[Any], handler: EventHandler[Any]) -> None:
+        """
+        Удаляет первое вхождение хендлера для данного типа события.
+        Если хендлер не зарегистрирован — молча игнорирует.
+        """
+        handlers = self._handlers.get(event_type)
+        if handlers is None:
+            return
+        try:
+            handlers.remove(handler)
+        except ValueError:
+            pass
+        # Освобождаем память, если список стал пустым
+        if not handlers:
+            del self._handlers[event_type]
+
     # -------------------------
     # PUBLISH
     # -------------------------
+
     async def publish(self, event: Any) -> None:
         if self._stopping:
-            return
+            raise RuntimeError("EventBus is shutting down; event dropped: %s" % event)
 
         event_type = cast(Type[Any], type(event))
-        handlers = self._handlers.get(event_type, [])
+        # Снимок списка на момент публикации — защита от гонки при subscribe/unsubscribe
+        handlers = list(self._handlers.get(event_type, []))
         if not handlers:
             return
 
@@ -43,6 +62,7 @@ class EventBus(IEventBus):
     # -------------------------
     # SEQUENTIAL MODE
     # -------------------------
+
     async def _publish_sequential(
         self, event: Any, handlers: list[EventHandler[Any]]
     ) -> None:
@@ -55,6 +75,7 @@ class EventBus(IEventBus):
     # -------------------------
     # CONCURRENT MODE
     # -------------------------
+
     async def _publish_concurrent(
         self, event: Any, handlers: list[EventHandler[Any]]
     ) -> None:
@@ -76,18 +97,28 @@ class EventBus(IEventBus):
     # -------------------------
     # ERROR HANDLING
     # -------------------------
+
     def _handle_error(
         self, error: Exception, event: Any, handler: EventHandler[Any]
     ) -> None:
-        logger.error("Error in handler %s for event %s: %s", handler, event, error)
+        logger.error(
+            "Error in handler %s for event %s: %s",
+            handler,
+            event,
+            error,
+            exc_info=error,
+        )
 
     # -------------------------
     # SHUTDOWN
     # -------------------------
+
     async def shutdown(self) -> None:
         self._stopping = True
 
-        if self._tasks:
-            for task in self._tasks:
-                task.cancel()
-            await asyncio.gather(*self._tasks, return_exceptions=True)
+        pending = list(
+            self._tasks
+        )  # снимок, чтобы избежать изменения set во время итерации
+        if pending:
+            # Ждём завершения уже запущенных обработчиков, не прерывая их
+            await asyncio.gather(*pending, return_exceptions=True)
