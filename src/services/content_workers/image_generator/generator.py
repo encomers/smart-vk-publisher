@@ -2,7 +2,15 @@ import base64
 import io
 import re
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageStat
+from PIL import (
+    Image,
+    ImageDraw,
+    ImageEnhance,
+    ImageFilter,
+    ImageFont,
+    ImageOps,
+    ImageStat,
+)
 
 from .interface import IImageGenerator
 
@@ -72,7 +80,7 @@ class ImageOverlayGenerator(IImageGenerator):
         Разбивает текст на строки с учетом ширины и правил типографики.
         """
         text = self._apply_typography(text)
-        words = [w for w in text.split(" ") if w]
+        words = re.split(r" +", text)
 
         lines: list[str] = []
         current_line = []
@@ -116,7 +124,11 @@ class ImageOverlayGenerator(IImageGenerator):
         overlay_w, overlay_h = current_overlay.size
 
         # 2. Подготовка фонового изображения
-        base_img = base_img.resize((overlay_w, overlay_h), Image.Resampling.LANCZOS)  # type: ignore
+        base_img = ImageOps.fit(
+            base_img,
+            (overlay_w, overlay_h),
+            method=Image.Resampling.LANCZOS,
+        )  # type: ignore
 
         # Применяем размытие
         if self.blur_radius > 0:
