@@ -142,8 +142,10 @@ class ImageOverlayGenerator(IImageGenerator):
         left_padding = 50
         right_padding = 50
 
+        text_width_koeff = 3 / 4
+
         max_text_width = (
-            int(overlay_w * 3 / 4) - left_padding - right_padding
+            int(overlay_w * text_width_koeff) - left_padding - right_padding
         )  # Максимальная ширина текста - 3/4 от ширины изображения
 
         wrapped_text = self._smart_wrap(text, draw, max_text_width)
