@@ -2,6 +2,7 @@ import logging
 
 import vk_api  # type: ignore
 
+from src.events import EventBus
 from src.model.domain import ReadyText
 from src.services.content_workers.image_generator import IImageGenerator
 from src.utils import to_base64_image
@@ -14,7 +15,10 @@ logger = logging.getLogger(__name__)
 
 class VKPublisher(IPublisher):
     def __init__(
-        self, config: VKConfig, image_generator: IImageGenerator | None = None
+        self,
+        config: VKConfig,
+        image_generator: IImageGenerator | None = None,
+        bus: EventBus | None = None,
     ):
 
         try:
@@ -25,6 +29,16 @@ class VKPublisher(IPublisher):
 
         self._config = config
         self._image_generator = image_generator
+        self._bus = bus
+
+        if self._bus:
+            self._bus.subscribe(ReadyText, self.publish)  # type: ignore
+
+        if self._config.testing_mode and self._bus:
+            logger.info(
+                "VKPublisher is running in testing mode. Will publish list of ready texts without scheduler and db worker."
+            )
+            self._bus.subscribe(list[ReadyText], self._publish_list)  # type: ignore
 
     async def _get_base64_image(self, text: ReadyText) -> str | None:
         """Создает base64-изображение для публикации."""
@@ -42,7 +56,36 @@ class VKPublisher(IPublisher):
 
         return image
 
-    async def publish(self, text: ReadyText) -> str:
+    async def _publish_list(self, texts: list[ReadyText]):
+        if not self._bus:
+            logger.warning(
+                "EventBus is not available. Cannot publish list of ready texts."
+            )
+            return
+        for text in texts:
+            self._bus.publish(text)  # type: ignore
 
-        # TODO: Реализовать публикацию в ВКонтакте через VK API
-        return ""
+    async def publish(self, text: ReadyText) -> str:
+        """
+        Публикует статью с заданным заголовком, содержанием и изображением.
+        Возвращает идентификатор опубликованного поста.
+
+        В случае ошибок на отдельных этапах (загрузка изображения, создание опроса)
+        публикация продолжается без соответствующего элемента с записью в лог.
+        """
+        logger.info(
+            f"Starting publication of article '{text.title}' (GUID: {text.guid})"
+        )
+
+        # 1. Генерация изображения
+        try:
+            image = await self._get_base64_image(text)
+        except Exception as e:
+            logger.error(f"Failed to generate image for VK post: {e}")
+            image = None
+
+        # TODO: Realise
+
+        if image:
+            return "Image got"
+        return "Image not got"

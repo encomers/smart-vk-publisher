@@ -6,3 +6,7 @@ class VKConfig(BaseModel):
     publishing_id: int = Field(
         ..., description="ID группы ВКонтакте для публикации постов"
     )
+    testing_mode: bool = Field(
+        default=False,
+        description="Режим тестирования",
+    )
