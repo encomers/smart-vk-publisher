@@ -43,9 +43,6 @@ class VKConfig(BaseModel):
     @field_validator("api_version", mode="before")
     @classmethod
     def validate_api_version(cls, v: object):
-        # Decimal -> str
-        if isinstance(v, Decimal):
-            v = str(v)
 
         if not isinstance(v, str):
             raise ValueError(
