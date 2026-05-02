@@ -139,17 +139,27 @@ class ImageOverlayGenerator(IImageGenerator):
 
         # 4. Рендеринг текста
         draw = ImageDraw.Draw(canvas)
-        max_text_width = overlay_w - 20  # 10px отступ слева + 10px справа
+        left_padding = 50
+        right_padding = 50
+
+        max_text_width = (
+            int(overlay_w * 3 / 4) - left_padding - right_padding
+        )  # Максимальная ширина текста - 3/4 от ширины изображения
 
         wrapped_text = self._smart_wrap(text, draw, max_text_width)
 
         # Вычисляем высоту текстового блока для центрирования по Y
-        bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=self.font)
+        bbox = draw.multiline_textbbox(
+            (0, 0),
+            wrapped_text,
+            font=self.font,
+            spacing=4,
+        )
         text_height = bbox[3] - bbox[1]
         y_pos = (overlay_h - text_height) // 2
 
         draw.multiline_text(
-            (50, y_pos),
+            (left_padding, y_pos),
             wrapped_text,
             font=self.font,
             fill=text_color,
