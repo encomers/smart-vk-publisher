@@ -8,8 +8,8 @@ from src.services.content_workers.image_generator import IImageGenerator
 from src.utils import to_base64_image
 
 from ..interface import IPublisher
+from ._models import PublishingPoll
 from .config import VKConfig
-from .models import PublishingPoll
 
 logger = logging.getLogger(__name__)
 
