@@ -4,6 +4,7 @@ import vk_api  # type: ignore
 
 from src.model.domain import ReadyText
 from src.services.content_workers.image_generator import IImageGenerator
+from src.utils import to_base64_image
 
 from ..interface import IPublisher
 from .config import VKConfig
@@ -24,6 +25,22 @@ class VKPublisher(IPublisher):
 
         self._config = config
         self._image_generator = image_generator
+
+    async def _get_base64_image(self, text: ReadyText) -> str | None:
+        """Создает base64-изображение для публикации."""
+
+        if not text.enclosure:
+            return None
+
+        if self._image_generator:
+            image = await self._image_generator.generate_from_url(
+                image_url=text.enclosure,
+                text=text.title,
+            )
+        else:
+            image = await to_base64_image(text.enclosure)
+
+        return image
 
     async def publish(self, text: ReadyText) -> str:
 

@@ -103,7 +103,7 @@ class ImageOverlayGenerator(IImageGenerator):
 
         return "\n".join(lines)
 
-    def generate(self, base64_image_str: str, text: str) -> Image.Image:
+    def generate(self, base64_image_str: str, text: str) -> str:
         """
         Основной цикл генерации изображения.
         """
@@ -183,16 +183,16 @@ class ImageOverlayGenerator(IImageGenerator):
             spacing=4,
         )
 
-        return canvas
+        return self._to_base64(canvas)
 
-    async def generate_from_url(self, image_url: str, text: str) -> Image.Image:
+    async def generate_from_url(self, image_url: str, text: str) -> str:
         try:
             img: str = await to_base64_image(image_url)
         except Exception as e:
             raise ValueError(f"Error occurred while fetching image from URL: {e}")
         return self.generate(img, text)
 
-    def to_base64(self, img: Image.Image) -> str:
+    def _to_base64(self, img: Image.Image) -> str:
         buffered = io.BytesIO()
         img.save(buffered, format="PNG")
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
