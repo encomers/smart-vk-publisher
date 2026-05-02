@@ -1,10 +1,11 @@
 import re
 from decimal import Decimal, InvalidOperation
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-_VERSION_RE = re.compile(r"^\d+\.\d{1,3}$")
-_MIN_VALUE = Decimal("5.199")
+_VERSION_RE = re.compile(r"^(0|[1-9]\d*)\.\d{1,3}$")
+_MIN_VALUE_STR = "5.199"
+_MIN_VALUE = Decimal(_MIN_VALUE_STR)
 
 
 class VKConfig(BaseModel):
@@ -20,6 +21,8 @@ class VKConfig(BaseModel):
         _type_: VKConfig
     """
 
+    model_config = ConfigDict(frozen=True)
+
     access_token: str = Field(..., description="Токен доступа к VK API", min_length=10)
 
     publishing_id: int = Field(
@@ -31,37 +34,38 @@ class VKConfig(BaseModel):
         description="Режим тестирования",
     )
 
-    api_version: str = Field(default="5.199", description="Версия API VK", min_length=1)
+    api_version: str = Field(
+        default=_MIN_VALUE_STR,
+        description="Версия API VK. Минимум: " + _MIN_VALUE_STR,
+        min_length=1,
+    )
 
     @field_validator("api_version", mode="before")
     @classmethod
-    def validate_api_version(cls, v: str | int | float | Decimal):
-        if isinstance(v, bool):
-            raise ValueError("api_version не может быть bool")
-
-        # int -> "5.0"
-        if isinstance(v, int):
-            v = f"{v}.0"
-
+    def validate_api_version(cls, v: object):
         # Decimal -> str
-        elif isinstance(v, Decimal):
+        if isinstance(v, Decimal):
             v = str(v)
 
-        # float -> str без scientific notation
-        elif isinstance(v, float):
-            v = format(v, "f").rstrip("0").rstrip(".")
-            if "." not in v:
-                v += ".0"
+        if not isinstance(v, str):
+            raise ValueError(
+                f"api_version должен быть строкой формата 'X.Y', "
+                f"например: {_MIN_VALUE_STR}"
+            )
 
         if not _VERSION_RE.fullmatch(v):
-            raise ValueError("api_version должен содержать 1–3 знака после точки")
+            raise ValueError(
+                f"api_version должен быть в формате 'X.Y' с 1–3 знаками после точки. Например: {_MIN_VALUE_STR}"
+            )
 
         try:
             value = Decimal(v)
         except InvalidOperation:
-            raise ValueError("api_version должен быть строкой, содержащей float")
+            raise ValueError(
+                f"api_version должен быть строкой формата 'X.Y', например: {_MIN_VALUE_STR}"
+            )
 
         if value < _MIN_VALUE:
-            raise ValueError("api_version должен быть не меньше 5.199")
+            raise ValueError(f"api_version должен быть не меньше {_MIN_VALUE_STR}")
 
         return v
