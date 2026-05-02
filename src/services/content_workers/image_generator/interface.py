@@ -10,6 +10,11 @@ class IImageGenerator(ABC):
         pass
 
     @abstractmethod
-    def generate_from_url(self, image_url: str, text: str) -> Image.Image:
+    async def generate_from_url(self, image_url: str, text: str) -> Image.Image:
         """Принимает URL изображения и текст, возвращает объект PIL Image"""
+        pass
+
+    @abstractmethod
+    def to_base64(self, img: Image.Image) -> str:
+        """Принимает объект PIL Image, возвращает строку в формате base64"""
         pass

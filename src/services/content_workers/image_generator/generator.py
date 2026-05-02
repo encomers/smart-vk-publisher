@@ -191,3 +191,8 @@ class ImageOverlayGenerator(IImageGenerator):
         except Exception as e:
             raise ValueError(f"Error occurred while fetching image from URL: {e}")
         return self.generate(img, text)
+
+    def to_base64(self, img: Image.Image) -> str:
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode("utf-8")
