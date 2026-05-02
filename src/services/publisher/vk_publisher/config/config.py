@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from pydantic import BaseModel, Field, field_validator
 
 _VERSION_RE = re.compile(r"^\d+\.\d{1,3}$")
+_MIN_VALUE = Decimal("5.199")
 
 
 class VKConfig(BaseModel):
@@ -34,26 +35,33 @@ class VKConfig(BaseModel):
 
     @field_validator("api_version", mode="before")
     @classmethod
-    def validate_api_version(cls, v: str | float | Decimal):
-        # Приводим float/int/Decimal к строке до валидации поля
-        if isinstance(v, Decimal):
-            v = str(v)
-        elif isinstance(v, float):
-            # ВАЖНО: избегаем float артефактов
-            v = format(v, "f")
+    def validate_api_version(cls, v: str | int | float | Decimal):
+        if isinstance(v, bool):
+            raise ValueError("api_version не может быть bool")
 
-        if not isinstance(v, str):
-            raise ValueError("api_version должен быть строкой или числом")
+        # int -> "5.0"
+        if isinstance(v, int):
+            v = f"{v}.0"
+
+        # Decimal -> str
+        elif isinstance(v, Decimal):
+            v = str(v)
+
+        # float -> str без scientific notation
+        elif isinstance(v, float):
+            v = format(v, "f").rstrip("0").rstrip(".")
+            if "." not in v:
+                v += ".0"
+
+        if not _VERSION_RE.fullmatch(v):
+            raise ValueError("api_version должен содержать 1–3 знака после точки")
 
         try:
             value = Decimal(v)
         except InvalidOperation:
             raise ValueError("api_version должен быть строкой, содержащей float")
 
-        if value < Decimal("5.199"):
+        if value < _MIN_VALUE:
             raise ValueError("api_version должен быть не меньше 5.199")
-
-        if not _VERSION_RE.fullmatch(v):
-            raise ValueError("api_version должен содержать 1–3 знака после точки")
 
         return v
