@@ -9,6 +9,7 @@ from src.utils import to_base64_image
 
 from ..interface import IPublisher
 from .config import VKConfig
+from .models import PublishingPoll
 
 logger = logging.getLogger(__name__)
 
@@ -43,16 +44,20 @@ class VKPublisher(IPublisher):
     async def _get_base64_image(self, text: ReadyText) -> str | None:
         """Создает base64-изображение для публикации."""
 
-        if not text.enclosure:
-            return None
+        try:
+            if not text.enclosure:
+                return None
 
-        if self._image_generator:
-            image = await self._image_generator.generate_from_url(
-                image_url=text.enclosure,
-                text=text.title,
-            )
-        else:
-            image = await to_base64_image(text.enclosure)
+            if self._image_generator:
+                image = await self._image_generator.generate_from_url(
+                    image_url=text.enclosure,
+                    text=text.title,
+                )
+            else:
+                image = await to_base64_image(text.enclosure)
+        except Exception as e:
+            logger.error(f"Failed to generate image for VK post: {e}")
+            return None
 
         return image
 
@@ -65,9 +70,23 @@ class VKPublisher(IPublisher):
         for text in texts:
             self._bus.publish(text)  # type: ignore
 
+    def _get_poll(self, text: ReadyText) -> PublishingPoll | None:
+        if (
+            text.poll_title
+            and text.poll_title.strip() != ""
+            and text.poll_options
+            and len(text.poll_options) > 0
+        ):
+            return PublishingPoll(
+                title=text.poll_title,
+                options=text.poll_options,
+            )
+
+        return None
+
     async def publish(self, text: ReadyText) -> str:
         """
-        Публикует статью с заданным заголовком, содержанием и изображением.
+        Публикует статью с заданным заголовком, содержанием и изображением/опросом.
         Возвращает идентификатор опубликованного поста.
 
         В случае ошибок на отдельных этапах (загрузка изображения, создание опроса)
@@ -77,15 +96,11 @@ class VKPublisher(IPublisher):
             f"Starting publication of article '{text.title}' (GUID: {text.guid})"
         )
 
-        # 1. Генерация изображения
-        try:
-            image = await self._get_base64_image(text)
-        except Exception as e:
-            logger.error(f"Failed to generate image for VK post: {e}")
-            image = None
+        poll: PublishingPoll | None = self._get_poll(text)
+        b64_image: str | None = await self._get_base64_image(text) if not poll else None
 
         # TODO: Realise
 
-        if image:
+        if b64_image:
             return "Image got"
         return "Image not got"
