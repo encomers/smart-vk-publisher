@@ -12,5 +12,6 @@ dependencies = [
     "pydantic>=2.13.2",
     "rich>=15.0.0",
     "tenacity>=9.1.4",
+    "vk-api>=11.10.0",
     "yandex-ai-studio-sdk>=0.20.1",
 ]

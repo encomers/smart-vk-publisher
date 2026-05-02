@@ -1,11 +1,23 @@
+import logging
+
+import vk_api  # type: ignore
+
 from src.model.domain import ReadyText
 from src.services.content_workers.image_generator import IImageGenerator
 
 from ..interface import IPublisher
+from .config import VKConfig
+
+logger = logging.getLogger(__name__)
 
 
 class VKPublisher(IPublisher):
-    def __init__(self, image_generator: IImageGenerator | None = None):
+    def __init__(
+        self, config: VKConfig, image_generator: IImageGenerator | None = None
+    ):
+
+        self.vk = vk_api.VkApi(token=config.access_token).get_api()
+        self.group_id = config.group_id
         self.image_generator = image_generator
 
     async def publish(self, text: ReadyText) -> str:
