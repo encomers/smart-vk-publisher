@@ -17,13 +17,13 @@ class VKPublisher(IPublisher):
     ):
 
         try:
-            self.vk = vk_api.VkApi(token=config.access_token).get_api()
+            self._vk = vk_api.VkApi(token=config.access_token).get_api()
         except Exception as e:
             logger.error(f"Failed to initialize VK API: {e}")
             raise
 
-        self.config = config
-        self.image_generator = image_generator
+        self._config = config
+        self._image_generator = image_generator
 
     async def publish(self, text: ReadyText) -> str:
 
