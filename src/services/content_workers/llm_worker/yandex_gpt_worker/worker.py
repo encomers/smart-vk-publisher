@@ -79,7 +79,7 @@ class YandexGPTWorker(IAsyncLLMWorker, IImageSelector):
 
         # Автоматическая подписка на входящие обработанные тексты
         if self.bus:
-            self.bus.subscribe(ProcessText, self.complete)  # type: ignore
+            self.bus.subscribe(ProcessText, self._complete_handler)
 
         # Клиент настраивается на эндпоинт Yandex Cloud с OpenAI-совместимым API
         self.client = AsyncOpenAI(
@@ -190,6 +190,9 @@ class YandexGPTWorker(IAsyncLLMWorker, IImageSelector):
         return await self._request_json(
             "rewrite_response", RewriteTitleSchema, messages, temperature=0.7
         )
+
+    async def _complete_handler(self, event: ProcessText) -> None:
+        await self.complete(event)
 
     async def complete(self, text: ProcessText) -> list[ReadyText]:
         """

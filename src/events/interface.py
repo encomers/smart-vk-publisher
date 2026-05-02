@@ -1,12 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Any, Awaitable, Callable, Type
+from typing import Any, Awaitable, Protocol, Type, TypeVar
 
-EventHandler = Callable[[Any], Awaitable[None]]
+T_contra = TypeVar("T_contra", contravariant=True)
+
+
+class EventHandler(Protocol[T_contra]):
+    def __call__(self, event: T_contra) -> Awaitable[None]: ...
 
 
 class IEventBus(ABC):
     @abstractmethod
-    def subscribe(self, event_type: Type, handler: EventHandler) -> None:  # type: ignore
+    def subscribe(
+        self, event_type: Type[T_contra], handler: EventHandler[T_contra]
+    ) -> None:  # type: ignore
         """
         Подписаться на событие определённого типа
         """

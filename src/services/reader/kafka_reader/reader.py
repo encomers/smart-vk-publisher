@@ -1,12 +1,13 @@
 import logging
+from typing import cast
 
-from aiokafka import AIOKafkaConsumer  # type: ignore
+from aiokafka import AIOKafkaConsumer  # type: ignore[import-untyped]
+from aiokafka.structs import ConsumerRecord  # type: ignore[import-untyped]
 
 from src.events.interface import IEventBus
 
 from ..interface import IAsyncReader
 
-# Инициализация логгера для мониторинга состояния потребителя
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +38,6 @@ class KafkaReader(IAsyncReader):
         Raises:
             ValueError: Если один из обязательных параметров пуст или содержит только пробелы.
         """
-
         if not bootstrap_server.strip():
             raise ValueError("Bootstrap servers list cannot be empty")
         if not topic.strip():
@@ -45,10 +45,7 @@ class KafkaReader(IAsyncReader):
         if not group_id.strip():
             raise ValueError("Group ID cannot be empty")
 
-        # Настройка потребителя:
-        # auto_offset_reset="earliest" — читать с самого начала, если смещения отсутствуют.
-        # enable_auto_commit=True — автоматическое подтверждение прочтения сообщений.
-        self.consumer = AIOKafkaConsumer(
+        self._consumer: AIOKafkaConsumer[bytes] = AIOKafkaConsumer(  # type: ignore[type-arg]
             topic.strip(),
             bootstrap_servers=bootstrap_server.strip(),
             group_id=group_id.strip(),
@@ -56,7 +53,7 @@ class KafkaReader(IAsyncReader):
             enable_auto_commit=True,
         )
 
-        self.bus = bus
+        self._bus = bus
 
     async def start_reading(self) -> None:
         """
@@ -67,29 +64,32 @@ class KafkaReader(IAsyncReader):
         В случае возникновения критической ошибки логирует её и корректно
         завершает работу потребителя.
         """
-        await self.consumer.start()
+        await self._consumer.start()
         logger.info("Kafka consumer started successfully.")
 
         try:
-            async for message in self.consumer:  # type: ignore
-                # Пропуск пустых сообщений (tombstones)
-                if not message.value:  # type: ignore
+            async for raw_message in self._consumer:  # type: ignore[attr-defined]
+                message = cast(ConsumerRecord[bytes, bytes | None], raw_message)
+                value = message.value
+
+                if not value:
                     continue
 
                 logger.info(
-                    f"Received message from Kafka: topic={message.topic}, "
-                    f"partition={message.partition}, offset={message.offset}, "
-                    f"key={message.key}, value_size={len(message.value)} bytes"  # type: ignore
+                    "Received message from Kafka: topic=%s, partition=%s, "
+                    "offset=%s, key=%s, value_size=%d bytes",
+                    message.topic,
+                    message.partition,
+                    message.offset,
+                    message.key,
+                    len(value),
                 )
 
-                # Передача сырых байтов в шину событий без десериализации.
-                # Это позволяет сохранять слабую связь между транспортом и логикой.
-                if self.bus:
-                    await self.bus.publish(message.value)  # type: ignore
+                if self._bus:
+                    await self._bus.publish(value)
 
         except Exception as e:
-            logger.error(f"Error reading from Kafka: {e}", exc_info=True)
+            logger.error("Error reading from Kafka: %s", e, exc_info=True)
         finally:
-            # Гарантированное закрытие соединения при остановке сервиса
-            await self.consumer.stop()
+            await self._consumer.stop()
             logger.info("Kafka consumer stopped.")

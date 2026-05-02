@@ -42,8 +42,11 @@ class TextParser(ITextParser):
 
         # Регистрация обработчиков в шине событий, если она предоставлена
         if self.event_bus:
-            self.event_bus.subscribe(bytes, self.parse)  # type: ignore
-            self.event_bus.subscribe(KafkaNewsMessage, self.prepare)  # type: ignore
+            self.event_bus.subscribe(bytes, self._parse_handler)
+            self.event_bus.subscribe(KafkaNewsMessage, self._prepare_handler)
+
+    async def _parse_handler(self, event: bytes) -> None:
+        await self.parse(event)
 
     async def parse(
         self,
@@ -82,6 +85,9 @@ class TextParser(ITextParser):
         except Exception as e:
             logger.error(f"Failed to parse raw text: {e}")
             raise e
+
+    async def _prepare_handler(self, event: KafkaNewsMessage) -> None:
+        await self.prepare(event)
 
     async def prepare(self, message: KafkaNewsMessage) -> ProcessText:
         """
