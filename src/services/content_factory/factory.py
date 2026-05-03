@@ -1,6 +1,6 @@
 import inspect
 import logging
-from typing import Awaitable, Callable, Union, overload
+from typing import Awaitable, Callable, Union
 
 from src.events import IEventBus
 from src.model.domain import ReadyText
@@ -19,58 +19,68 @@ RenderStep = Callable[[ContentContext], Awaitable[list[ReadyText]]]
 
 
 class AIFactory(IContentFactory):
-    @overload
     def __init__(
         self,
         *,
-        generator: IPipelineGenerator,
+        pipeline: list[Step],
+        render_step: RenderStep,
         parsing_condition: Callable[[KafkaNewsMessage], bool] | None = None,
         bus: IEventBus | None = None,
-    ) -> None: ...
-
-    @overload
-    def __init__(
-        self,
-        *,
-        processing_steps: list[Step] | None = None,
-        render_step: RenderStep | None = None,
-        parsing_condition: Callable[[KafkaNewsMessage], bool] | None = None,
-        bus: IEventBus | None = None,
-    ) -> None: ...
-
-    def __init__(
-        self,
-        *,
-        generator: IPipelineGenerator | None = None,
-        processing_steps: list[Step] | None = None,
-        render_step: RenderStep | None = None,
-        parsing_condition: Callable[[KafkaNewsMessage], bool] | None = None,
-        bus: IEventBus | None = None,
+        image_parser: ImageParser | None = None,
     ) -> None:
-
-        if generator is not None and (
-            processing_steps is not None or render_step is not None
-        ):
-            raise ValueError("Use either generator OR render_step + processing_steps")
-
-        if generator is None and render_step is None:
-            raise ValueError("Either generator or render_step must be set")
-
         self.parsing_condition = parsing_condition
         self._bus = bus
-        self.image_parser = ImageParser()
+        self.image_parser = image_parser or ImageParser()
+
+        self.pipeline = pipeline
+        self.render_step = render_step
 
         if self._bus is not None:
             self._bus.subscribe(bytes, self._complete_bytes_handler)
 
-        if generator is not None:
-            self.pipeline = generator.get_steps()
-            self.render_step = generator.get_render_step()
-        else:
-            self.pipeline = (
-                list(processing_steps) if processing_steps is not None else []
-            )
-            self.render_step = render_step
+    @classmethod
+    def from_generator(
+        cls,
+        *,
+        generator: IPipelineGenerator,
+        parsing_condition: Callable[[KafkaNewsMessage], bool] | None = None,
+        bus: IEventBus | None = None,
+        image_parser: ImageParser | None = None,
+    ) -> AIFactory:
+        pipeline = generator.get_steps()
+        render_step = generator.get_render_step()
+
+        if len(pipeline) == 0:
+            logger.warning("Pipeline from generator is empty")
+
+        if render_step is None:
+            raise ValueError("Render step from generator is None")
+
+        return cls(
+            pipeline=pipeline,
+            render_step=render_step,
+            parsing_condition=parsing_condition,
+            bus=bus,
+            image_parser=image_parser,
+        )
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        *,
+        render_step: RenderStep,
+        processing_steps: list[Step] | None = None,
+        parsing_condition: Callable[[KafkaNewsMessage], bool] | None = None,
+        bus: IEventBus | None = None,
+        image_parser: ImageParser | None = None,
+    ) -> AIFactory:
+        return cls(
+            pipeline=list(processing_steps) if processing_steps else [],
+            render_step=render_step,
+            parsing_condition=parsing_condition,
+            bus=bus,
+            image_parser=image_parser,
+        )
 
     def add_step(self, step: Step) -> None:
         self.pipeline.append(step)
