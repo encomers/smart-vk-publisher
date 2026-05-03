@@ -1,6 +1,6 @@
 import inspect
 import logging
-from typing import Awaitable, Callable, Union
+from typing import Awaitable, Callable, Union, overload
 
 from src.events import IEventBus
 from src.model.domain import ReadyText
@@ -9,6 +9,7 @@ from utils import html_to_text
 
 from .interface import IContentFactory
 from .model.content_context import ContentContext
+from .pipline_steps import IPipelineGenerator
 from .workers.image_parser import ImageParser
 
 logger = logging.getLogger(__name__)
@@ -18,24 +19,58 @@ RenderStep = Callable[[ContentContext], Awaitable[list[ReadyText]]]
 
 
 class AIFactory(IContentFactory):
+    @overload
     def __init__(
         self,
         *,
-        processingSteps: list[Step] | None = None,
-        renderStep: RenderStep | None = None,
+        generator: IPipelineGenerator,
         parsing_condition: Callable[[KafkaNewsMessage], bool] | None = None,
         bus: IEventBus | None = None,
-    ):
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        *,
+        processing_steps: list[Step] | None = None,
+        render_step: RenderStep | None = None,
+        parsing_condition: Callable[[KafkaNewsMessage], bool] | None = None,
+        bus: IEventBus | None = None,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        *,
+        generator: IPipelineGenerator | None = None,
+        processing_steps: list[Step] | None = None,
+        render_step: RenderStep | None = None,
+        parsing_condition: Callable[[KafkaNewsMessage], bool] | None = None,
+        bus: IEventBus | None = None,
+    ) -> None:
+
+        if generator is not None and (
+            processing_steps is not None or render_step is not None
+        ):
+            raise ValueError("Use either generator OR render_step + processing_steps")
+
+        if generator is None and render_step is None:
+            raise ValueError("Either generator or render_step must be set")
+
         self.parsing_condition = parsing_condition
         self._bus = bus
-
-        if self._bus:
-            self._bus.subscribe(bytes, self._complete_bytes_handler)
-
         self.image_parser = ImageParser()
 
-        self.pipeline = list(processingSteps) if processingSteps else []
-        self.render_step: RenderStep | None = renderStep
+        if self._bus is not None:
+            self._bus.subscribe(bytes, self._complete_bytes_handler)
+
+        if generator is not None:
+            self.pipeline = generator.get_steps()
+            self.render_step = generator.get_render_step()
+        else:
+            self.pipeline = (
+                list(processing_steps) if processing_steps is not None else []
+            )
+            self.render_step = render_step
 
     def add_step(self, step: Step) -> None:
         self.pipeline.append(step)
