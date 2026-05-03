@@ -235,7 +235,7 @@ class YandexGPTWorker(IAsyncLLMWorker, IImageSelector):
                 title_object = await self.generate_title(r_text.text)
 
                 # 3. Подбор изображения
-                enclosure: str | None = None
+                enclosure: HttpUrl | None = None
                 # Изображение выбирается только если нет опроса (частое требование платформ)
                 if self.image_selector and text.enclosures and not poll_title:
                     s_img = await self.image_selector.select_best_enclosure(
@@ -245,10 +245,10 @@ class YandexGPTWorker(IAsyncLLMWorker, IImageSelector):
                     if s_img:
                         if more_enclosures:
                             # Забираем картинку из пула, чтобы она не повторялась
-                            enclosure = str(text.enclosures.pop(s_img.image_id))
+                            enclosure = text.enclosures.pop(s_img.image_id)
                         else:
                             # Оставляем картинку в пуле (повторное использование)
-                            enclosure = str(text.enclosures[s_img.image_id])
+                            enclosure = text.enclosures[s_img.image_id]
 
                 # 4. Сборка финального объекта
                 ready_text = ReadyText(

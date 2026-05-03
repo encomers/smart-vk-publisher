@@ -5,9 +5,11 @@ from typing import Awaitable, Callable, Union
 from src.events import IEventBus
 from src.model.domain import ReadyText
 from src.model.kafka import KafkaNewsMessage
+from utils import html_to_text
 
 from .interface import IContentFactory
 from .model.content_context import ContentContext
+from .workers.image_parser import ImageParser
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,8 @@ class AIFactory(IContentFactory):
 
         if self._bus:
             self._bus.subscribe(bytes, self._complete_bytes_handler)
+
+        self.image_parser = ImageParser()
 
         self.pipeline = list(processingSteps) if processingSteps else []
         self.render_step: RenderStep | None = renderStep
@@ -73,9 +77,10 @@ class AIFactory(IContentFactory):
                 [
                     message.news_item.title,
                     message.news_item.description,
-                    message.news_item.full_text,
+                    html_to_text(message.news_item.full_text),
                 ]
-            )
+            ),
+            enclosures=self.image_parser.get_images(message.news_item.full_text),
         )
 
         for step in self.pipeline:

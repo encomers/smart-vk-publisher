@@ -5,7 +5,7 @@ import vk_api  # type: ignore
 
 from src.events import IEventBus
 from src.model.domain import ReadyText
-from src.services.content_factory.workers.image_generator import IImageGenerator
+from src.services.image_generator import IImageGenerator
 from src.utils import to_base64_image
 
 from ..interface import IPublisher
@@ -54,11 +54,11 @@ class VKPublisher(IPublisher):
 
             if self._image_generator:
                 image = await self._image_generator.generate_from_url(
-                    image_url=text.enclosure,
+                    image_url=str(text.enclosure),
                     text=text.title,
                 )
             else:
-                image = await to_base64_image(text.enclosure)
+                image = await to_base64_image(str(text.enclosure))
         except Exception as e:
             logger.error(f"Failed to generate image for VK post: {e}")
             return None
