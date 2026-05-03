@@ -5,7 +5,7 @@ import vk_api  # type: ignore
 
 from src.events import IEventBus
 from src.model.domain import ReadyText
-from src.services.content_workers.image_generator import IImageGenerator
+from src.services.content_factory.workers.image_generator import IImageGenerator
 from src.utils import to_base64_image
 
 from ..interface import IPublisher
