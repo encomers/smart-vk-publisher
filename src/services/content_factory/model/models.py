@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class Poll(BaseModel):
@@ -10,6 +10,10 @@ class Poll(BaseModel):
 
 class Enclosures(BaseModel):
     enclosures: list[str] = Field(..., description="Список ссылок на изображения")
+
+
+class Enclosure(BaseModel):
+    image_id: int = Field(..., description="ID выбранного изображения")
 
 
 class Theme(BaseModel):
@@ -30,13 +34,6 @@ class AuthorPosition(BaseModel):
     )
 
 
-class PresentationStyle(BaseModel):
-    style: str = Field(
-        ...,
-        description="Манера подачи: нейтральная, позитивная, негативная, описательная, состадательная",
-    )
-
-
 class PollSelection(BaseModel):
     ids: list[int] = Field(
         ..., description="Список ID тем, на которые нужно сгенерировать опросы"
@@ -49,7 +46,7 @@ class ThemeContext(BaseModel):
     style: str | None = None
     poll_selection: bool = False
     poll: Poll | None = None
-    enclosure: str | None = None
+    enclosure: HttpUrl | None = None
 
     def render_with_task(self, task: str) -> str:
         return "\n\n".join(
@@ -82,9 +79,7 @@ class ThemeContext(BaseModel):
                 "\n".join(
                     [
                         f"{delim} АВТОРСКАЯ ПОЗИЦИЯ",
-                        (
-                            f"Угол зрения на тему: {self.position}. Строго следуй этому углу зрения"
-                        ),
+                        (f"Угол зрения на тему: {self.position}."),
                     ]
                 )
             )
@@ -95,9 +90,7 @@ class ThemeContext(BaseModel):
                 "\n".join(
                     [
                         f"{delim} СТИЛЬ ПОДАЧИ",
-                        (
-                            f"Манера подачи текста: {self.style}. Строго следуй этой манере подачи."
-                        ),
+                        (f"Манера подачи текста: {self.style}."),
                     ]
                 )
             )
@@ -106,9 +99,7 @@ class ThemeContext(BaseModel):
         if self.poll_selection:
             poll_block = [
                 f"{delim} ОПРОС",
-                (
-                    "Для поста на эту тему будет приложен опрос. Учитывай это при выполнении задачи."
-                ),
+                ("Для поста на эту тему будет приложен опрос."),
             ]
 
             if self.poll:
@@ -129,9 +120,7 @@ class ThemeContext(BaseModel):
                 "\n".join(
                     [
                         f"{delim} ИЗОБРАЖЕНИЕ",
-                        (
-                            "Пост на эту тему будет опубликован вместе с изображением. Учитывай это при выполнении задачи."
-                        ),
+                        ("Пост на эту тему будет опубликован вместе с изображением."),
                     ]
                 )
             )
