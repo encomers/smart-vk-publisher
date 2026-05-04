@@ -101,7 +101,7 @@ class PipelineGenerator(IPipelineGenerator):
 
         for id in result.ids:
             if id < len(ctx.themes):
-                ctx.themes[i].poll_selection = True
+                ctx.themes[id].poll_selection = True
 
     async def generate_poll(self, ctx: ContentContext) -> None:
         if ctx.themes is None or len(ctx.themes) == 0:
