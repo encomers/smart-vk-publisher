@@ -21,7 +21,7 @@ class ILLMWorker(ABC):
         schema_name: str,
         model_class: Type[T],
         messages: list[ChatCompletionMessageParam],
-        temperature: float,
+        temperature: float = 0.4,
     ) -> T: ...
 
     @abstractmethod

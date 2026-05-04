@@ -4,6 +4,7 @@ from .models import ThemeContext
 
 
 class ContentContext(BaseModel):
+    guid: str = Field(..., description="GUID from RSS")
     full_text: str = Field(..., description="Full text of the content")
     enclosures: list[HttpUrl] | None = None
     themes: list[ThemeContext] | None = None

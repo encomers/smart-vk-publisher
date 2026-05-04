@@ -3,7 +3,10 @@ import logging
 from typing import Any, Type, TypeVar
 
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionMessageParam,
+)
 from openai.types.shared_params.response_format_json_schema import (
     ResponseFormatJSONSchema,
 )

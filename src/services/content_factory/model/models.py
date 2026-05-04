@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, HttpUrl
 class Poll(BaseModel):
     title: str = Field(..., description="Заголовок опроса")
     options: list[str] = Field(
-        ..., description="Варианты ответа", min_length=2, max_length=10
+        ..., description="Варианты ответа", min_length=2, max_length=5
     )
 
 
@@ -28,6 +28,15 @@ class Theme(BaseModel):
     )
 
 
+class Themes(BaseModel):
+    themes: list[Theme] = Field(
+        ...,
+        description="Набор тем для написания постов по статье",
+        min_length=3,
+        max_length=5,
+    )
+
+
 class AuthorPosition(BaseModel):
     tone: str = Field(..., description="Тон повествования")
     framing: str = Field(..., description="Под каким углом необходимо подавать тему")
@@ -39,10 +48,15 @@ class PollSelection(BaseModel):
     )
 
 
+class GeneratedText(BaseModel):
+    title: str = Field(..., description="Заголовок для поста")
+    content: str = Field(..., description="Основное содержание поста без заголовка")
+
+
 class ThemeContext(BaseModel):
     theme: Theme = Field(..., description="Тема")
-    position: str | None = None
-    style: str | None = None
+    tone: str | None = None
+    framing: str | None = None
     poll_selection: bool = False
     poll: Poll | None = None
     enclosure: HttpUrl | None = None
@@ -73,23 +87,23 @@ class ThemeContext(BaseModel):
         )
 
         # Позиция / угол подачи
-        if self.position:
+        if self.tone:
             sections.append(
                 "\n".join(
                     [
-                        f"{delim} АВТОРСКАЯ ПОЗИЦИЯ",
-                        (f"Угол зрения на тему: {self.position}."),
+                        f"{delim} МАНЕРА ПОДАЧИ ТЕКСТА",
+                        (f"Манера подачи текста: {self.tone}."),
                     ]
                 )
             )
 
-        # Стиль подачи
-        if self.style:
+        # С какой стороны освещать тему
+        if self.framing:
             sections.append(
                 "\n".join(
                     [
-                        f"{delim} СТИЛЬ ПОДАЧИ",
-                        (f"Манера подачи текста: {self.style}."),
+                        f"{delim} С КАКОЙ СТОРОНЫ ОСВЕЩАТЬ ТЕМУ",
+                        (f"С какой стороны освещать тему: {self.framing}."),
                     ]
                 )
             )

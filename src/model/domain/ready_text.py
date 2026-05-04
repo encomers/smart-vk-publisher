@@ -12,6 +12,3 @@ class ReadyText(BaseModel):
     )
     poll_title: str | None = Field(..., description="Заголовок опроса")
     poll_options: list[str] | None = Field(..., description="Варианты ответа на опрос")
-    poster_candidates: list[HttpUrl] | None = Field(
-        ..., description="Выбранные изображения для поста"
-    )

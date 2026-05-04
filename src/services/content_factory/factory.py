@@ -126,6 +126,7 @@ class AIFactory(IContentFactory):
                 ]
             ),
             enclosures=self.image_parser.get_images(message.news_item.full_text),
+            guid=message.news_item.guid,
         )
 
         for step in self.pipeline:
