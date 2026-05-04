@@ -29,9 +29,8 @@ class Theme(BaseModel):
 
 
 class AuthorPosition(BaseModel):
-    position: str = Field(
-        ..., description="Под каким углом необходимо освещать эту тему"
-    )
+    tone: str = Field(..., description="Тон повествования")
+    framing: str = Field(..., description="Под каким углом необходимо подавать тему")
 
 
 class PollSelection(BaseModel):
