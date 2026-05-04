@@ -10,7 +10,7 @@ from utils import html_to_text
 from .interface import IContentFactory
 from .model.content_context import ContentContext
 from .pipline_steps import IPipelineGenerator
-from .workers.image_parser import ImageParser
+from .workers import ImageParser
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +130,11 @@ class AIFactory(IContentFactory):
 
         for step in self.pipeline:
             await run_step(step, ctx)
+            if ctx.critical_error is not None:
+                logger.error(
+                    f"Critical error while prccessing message. Error: {ctx.critical_error}. Message: {message}"
+                )
+                raise ctx.critical_error
 
         result = await self.render_step(ctx)
 
